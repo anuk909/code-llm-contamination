@@ -27,14 +27,14 @@ It downloads parquet files from a specified URL and converts them to JSONL forma
 ```
 pip install -r requirments.txt
 python setup_corpus.py
-python main.py --input_path <input_path> --result_dir <result_dir> --num_corpus_files <num_corpus_files> --num_chunks_to_read <num_chunks_to_read>
+python fuzzy_match_main.py --input_path <input_path> --result_dir <result_dir> --num_corpus_files <num_corpus_files> --num_chunks_to_read <num_chunks_to_read>
 ```
 
 ### Example usage
 
 ```
-python main.py --input_path inputs/HumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 1
-python main.py --input_path inputs/SingleHumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 40
+python fuzzy_match_main.py --input_path inputs/HumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 1
+python fuzzy_match_main.py --input_path inputs/SingleHumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 40
 ```
 
 # Semantic Level Similarity Score Section of Pipeline
@@ -51,7 +51,7 @@ The Dolos software requires each program to be zipped and stored seperatly withi
 ### Running Semantic Level Similarity Score Pipeline
 
 ```
-python dolosmain.py
+python dolos_main.py
 ```
 
 # Citation
