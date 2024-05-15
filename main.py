@@ -103,21 +103,14 @@ def search_test_strings_in_corpus(test_strings, corpus_chunks):
             chunk_results = pool.map(find_best_match_for_test, task_args)
 
         # Update overall results with the best matches from the current chunk and check for perfect matches
-        perfect_match_found = False
         for test_str, best_match, best_score in chunk_results:
             if best_score > overall_results[test_str]["score"]:
                 overall_results[test_str]["score"] = best_score
                 overall_results[test_str]["closest_solution"] = best_match
 
-            if best_score == 100:
-                perfect_match_found = True
-
         # Clean up shared memory
         shm.close()
         shm.unlink()
-
-        if perfect_match_found:
-            break
 
     return overall_results
 
@@ -200,3 +193,5 @@ if __name__ == "__main__":
     main(
         args.input_path, args.result_dir, args.num_corpus_files, args.num_chunks_to_read
     )
+
+# Example usage - python main.py --input_path inputs/HumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 10
