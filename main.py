@@ -1,122 +1,163 @@
 import os
 import json
 import logging
-import time
-
+import argparse
 from multiprocessing import shared_memory, Pool
 from io import StringIO
 from thefuzz import fuzz
 from tqdm import tqdm
 
 CORPUS_DIR = "Github_Split"
-CORPUS_FILES = [os.path.join(CORPUS_DIR, f"The_Pile_Github_Split_{i}.jsonl") for i in range(30)]
+CORPUS_FILES = [
+    os.path.join(CORPUS_DIR, f"The_Pile_Github_Split_{i}.jsonl") for i in range(10)
+]
 
-TEST_FILE = "HumanEval.jsonl"
+CHUNK_SIZE = 2_000_000  # Chunk size by character
+PROCESS_NUM = 8
+SHM_NAME = "human_eval_pile"
+FUZZ_THRESHOLD = 50
+STRIDE_PERCENT = 0.05
 
-
-# some parameters for parallelization
-CHUNK_SIZE = 2_000_000  # by character
-PROCESS_NUM = 16
-
+# Logging setup
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-def find_for_program(test_str: str, shm_name: str = "human_eval_pile", threshold: int = 50, stride_percent: float = 0.05):
-    # attach to the shared memory and decode it
+
+def find_best_match_for_test(test_tuple):
+    """Find the best fuzzy match for a given test string from shared memory."""
+    test_str, shm_name, threshold, stride_percent = test_tuple
+
+    # Attach to the shared memory and decode it
     existing_shm = shared_memory.SharedMemory(name=shm_name)
-    chunk_str = existing_shm.buf[:].tobytes().decode("utf-8")
+    corpus_chunk = existing_shm.buf[:].tobytes().decode("utf-8")
 
-    # compute the scores
-    scores = []
+    best_score = 0
+    best_match = None
     stride = max(int(len(test_str) * stride_percent), 1)
-    for i in range(0, len(chunk_str) - len(test_str), stride):
-        score = fuzz.ratio(chunk_str[i:i+len(test_str)], test_str)
-        scores.append(score)
-    
-    # we need to find the indices of the "peaks"
-    peak_indices = []
-    for i in range(len(scores)):
-        if i == 0:
-            if scores[i] > scores[i+1]:
-                peak_indices.append((i, scores[i]))
-            continue
 
-        if i == len(scores) - 1:
-            if scores[i] > scores[i-1]:
-                peak_indices.append((i, scores[i]))
-            continue
+    for i in range(0, len(corpus_chunk) - len(test_str), stride):
+        score = fuzz.ratio(corpus_chunk[i : i + len(test_str)], test_str)
+        if score > best_score:
+            best_score = score
+            best_match = corpus_chunk[i : i + len(test_str)]
 
-        if scores[i] >= scores[i-1] and scores[i] > scores[i+1]:
-            peak_indices.append((i, scores[i]))
-    
-    # filter out the peaks that are below the threshold
-    peak_indices = [peak for peak in peak_indices if peak[1] >= threshold]
-
-    return peak_indices
+    existing_shm.close()
+    return (
+        (test_str, best_match, best_score)
+        if best_score >= threshold
+        else (test_str, None, 0)
+    )
 
 
-def main():
-    # load the test file
-    logger.info("Reading test file...")
-    with open(TEST_FILE, "r") as f:
-        test_data = [json.loads(line) for line in f.readlines()]
-    test_strs = [ex["canonical_solution"] for ex in test_data]
+def load_test_data(filename):
+    """Load test data from the specified JSONL file."""
+    with open(filename, "r") as f:
+        return [json.loads(line)["canonical_solution"] for line in f.readlines()]
 
-    # load the corpus files
-    logger.info("Reading training corpus...")
+
+def load_corpus_data(corpus_files):
+    """Load corpus data from the specified corpus files."""
     corpus_data = []
-    for corpus_file in tqdm(CORPUS_FILES[:1]):  # FIXME: debug
+    for corpus_file in tqdm(corpus_files, desc="Loading corpus files"):
         with open(corpus_file, "r") as f:
-            corpus_data.extend([json.loads(line) for line in f.readlines()])
-    
-    # create the chunks first
-    chunk_strs = []
+            corpus_data.extend([json.loads(line)["text"] for line in f.readlines()])
+    return corpus_data
+
+
+def create_corpus_chunks(corpus_data, chunk_size):
+    """Create fixed-size chunks from the corpus data."""
+    chunks = []
     i = 0
-    while True:
+    while i < len(corpus_data):
         str_builder = StringIO()
-        while i < len(corpus_data) and str_builder.tell() < CHUNK_SIZE:
-            str_builder.write(corpus_data[i]["text"])
+        while i < len(corpus_data) and str_builder.tell() < chunk_size:
+            str_builder.write(corpus_data[i])
             i += 1
+        chunks.append(str_builder.getvalue())
+    return chunks
 
-        chunk_strs.append(str_builder.getvalue())        
-        if i == len(corpus_data):
-            break
-    logger.info(f"Created {len(chunk_strs)} chunks")
 
-    # sequential for corpus data and parallel for test program
-    for chunk_str in tqdm(chunk_strs[:1]):  # FIXME: debug
-        start = time.perf_counter()
+def main(input_path, result_dir):
+    # Validate file extensions
+    if not input_path.endswith(".jsonl"):
+        raise ValueError("Input file must have a .jsonl extension")
+    logger.info("Reading test file...")
+    test_strs = load_test_data(input_path)
 
-        # create the shared memory and load data into it
+    logger.info("Reading training corpus...")
+    corpus_data = load_corpus_data(CORPUS_FILES[:1])
+
+    logger.info("Creating corpus chunks...")
+    corpus_chunks = create_corpus_chunks(corpus_data, CHUNK_SIZE)
+    logger.info(f"Created {len(corpus_chunks)} chunks")
+
+    # Initialize results dictionary
+    overall_results = {
+        test_str: {"score": 0, "closest_solution": None} for test_str in test_strs
+    }
+
+    for chunk_str in tqdm(corpus_chunks[:1], desc="Processing chunks"):
+        # Create shared memory and load the current chunk into it
         chunk_str_bytes = chunk_str.encode("utf-8")
-        shm = shared_memory.SharedMemory(name="human_eval_pile", create=True, size=len(chunk_str_bytes))
-        shm.buf[:len(chunk_str_bytes)] = chunk_str_bytes
+        shm = shared_memory.SharedMemory(
+            name=SHM_NAME, create=True, size=len(chunk_str_bytes)
+        )
+        shm.buf[: len(chunk_str_bytes)] = chunk_str_bytes
 
-        stop_1 = time.perf_counter()
-        logger.debug(f"Created shared memory in {(stop_1 - start) * 1000} ms, starting parallel processes...")
-
-        # create the processes, parallize for different test programs
-        test_idx_strs = sorted(enumerate(test_strs), key=lambda x: len(x[1]), reverse=True)
-        test_indices, test_strs = zip(*test_idx_strs)
+        # Prepare tasks for parallel processing
+        task_args = [
+            (test_str, SHM_NAME, FUZZ_THRESHOLD, STRIDE_PERCENT)
+            for test_str in test_strs
+        ]
 
         with Pool(PROCESS_NUM) as pool:
-            results = pool.map(find_for_program, test_strs)
-        
-        # results = []
-        # intervals = []
-        # for test_str in tqdm(test_strs):
-        #     stop_3 = time.perf_counter()
-        #     results.append(find_for_program(test_str))
-        #     stop_4 = time.perf_counter()
-        #     intervals.append(stop_4 - stop_3)
-        
-        # print(f"Intervals: {sorted(intervals, reverse=True)}")
-        
+            chunk_results = pool.map(find_best_match_for_test, task_args)
+
+        # Update overall results with the best matches from the current chunk
+        for test_str, best_match, best_score in chunk_results:
+            if best_score > overall_results[test_str]["score"]:
+                overall_results[test_str]["score"] = best_score
+                overall_results[test_str]["closest_solution"] = best_match
+
+        # Clean up shared memory
         shm.close()
         shm.unlink()
-        
-        stop_2 = time.perf_counter()
-        logger.debug(f"Finished parallel processes in {stop_2 - stop_1} seconds")
+
+    # Save the final results to a JSONL file
+    os.makedirs(result_dir, exist_ok=True)
+    result_path = os.path.join(result_dir, os.path.basename(input_path))
+    with open(result_path, "w") as f:
+        for test_str, data in overall_results.items():
+            json.dump(
+                {
+                    "solution": test_str,
+                    "closest_solution": data["closest_solution"],
+                    "score": data["score"],
+                },
+                f,
+            )
+            f.write("\n")
+
+    logger.info("Results have been saved to %s", result_path)
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Fuzzy match test strings against corpus data."
+    )
+    parser.add_argument(
+        "--input_path",
+        type=str,
+        required=True,
+        help="Input path containing jsonl test file.",
+    )
+    parser.add_argument(
+        "--result_dir",
+        type=str,
+        required=True,
+        help="Dir path for putting for jsonl result file in.",
+    )
+
+    args = parser.parse_args()
+
+    main(args.input_path, args.result_dir)
