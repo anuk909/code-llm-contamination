@@ -1,0 +1,1 @@
+{"solution": "    return bin(sum(int(i) for i in str(N)))[2:]\n", "closest_solution": "      return sum([_flatten(c) for c in contactOr", "score": 60}
