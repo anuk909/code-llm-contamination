@@ -1,4 +1,4 @@
-This pipeline was built to find similar programs within the training data of LLMs. It works in two stages, using the RapidFuzz library and Dolos software to find programs that are similar both on a surface level and semantically.  
+This pipeline was built to find similar programs within the training data of LLMs. It works in two stages, using the RapidFuzz library and Dolos software to find programs that are similar both on a surface level and semantically.
 
 # Results of Pipeline
 
@@ -6,9 +6,12 @@ We store the results of our pipeline in the results folder. Due to file size, we
 The Levenshtein scores are ordered highest to lowest. Dolos scores are also ordered highest to lowest, with each program connected to their respective levenshtein scores with the key high_score_number. An example is that high_score_number": 1 corresponds to the program with the highest surface level similarity score.
 
 # Surface Level Similarity Score Section of Pipeline
-This feature was written by Ansong Ni. The RapidFuzz library is implemented to find programs that are similar to the gold program on a surface level. 
+
+This feature was written by Ansong Ni. The RapidFuzz library is implemented to find programs that are similar to the gold program on a surface level.
+The code is optimized to work on both single solution and multiple solutions at once.
 
 ### Setup
+
 - CORPUS_DIR: Location of the training dataset, this is what we will be searching through.
 - TEST_FILE: File containing the canonical solutions for each question. This is what we will be searching for in the corpus.
 - CHUNK_SIZE: Used for parralization.
@@ -17,14 +20,15 @@ This feature was written by Ansong Ni. The RapidFuzz library is implemented to f
 ### Running Surface Level Similarity Score Pipeline
 
 ```
-python main.py
+python main.py --input_path <input_path> --result_dir <result_dir> --num_corpus_files <num_corpus_files> --num_chunks_to_read <num_chunks_to_read>
 ```
 
 # Semantic Level Similarity Score Section of Pipeline
+
 The Dolos software requires each program to be zipped and stored seperatly within one folder. Once the programs are stored in the proper format, we can call the Dolos software on each folder. The zip_files() function works to create the folders properly formatted. After that the call_dolos() function works to call dolos on each of those folders.
 
-
 ### Setup
+
 - ZIP_DIR: Folder to store zipped files.
 - PLAIN_DIR: Location where programs are stored as plain text to be zipped.
 - TEST_FILE: File containing the canonical solutions for each question. This is what we will be comparing each of the found programs to.

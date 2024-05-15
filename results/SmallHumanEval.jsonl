@@ -1,1 +1,1 @@
-{"solution": "    return bin(sum(int(i) for i in str(N)))[2:]\n", "closest_solution": "      return [bin(str(randint(0, 1))) for i in r", "score": 69}
+{"solution": "    return bin(sum(int(i) for i in str(N)))[2:]\n", "closest_solution": "      return sum([_flatten(c) for c in contactOr", "score": 60}
