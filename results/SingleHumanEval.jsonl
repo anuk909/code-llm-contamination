@@ -1,0 +1,1 @@
+{"solution": "    return bin(sum(int(i) for i in str(N)))[2:]\n", "closest_solution": "    return [self.bar(i) for i in super().foo()]\n", "score": 67}
