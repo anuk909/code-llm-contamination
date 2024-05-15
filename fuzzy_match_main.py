@@ -5,7 +5,7 @@ import argparse
 from multiprocessing.shared_memory import SharedMemory
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from io import StringIO
-from thefuzz import fuzz
+from rapidfuzz.fuzz import partial_ratio_alignment
 from tqdm import tqdm
 
 CORPUS_DIR = "Github_Split"
@@ -18,7 +18,7 @@ CORPUS_FILES = [
 
 # Parameters
 CHUNK_SIZE = 2_000_000  # Size of each chunk in characters
-FUZZ_THRESHOLD = 50  # Minimum fuzzy matching score to be considered a match
+FUZZ_THRESHOLD = 60  # Minimum fuzzy matching score to be considered a match
 STRIDE_PERCENT = 0.05  # Stride percentage for sliding window in fuzzy matching
 MAX_WORKERS = 8  # Maximum number of threads for parallel processing
 SHM_NAME = "shared_chunk"  # Shared memory name
@@ -32,17 +32,14 @@ def fuzzy_match(test_str, chunk):
     """
     Find the best fuzzy match for a given test string in a chunk of text.
     """
-    best_score = 0
-    best_match = None
-    stride = max(int(len(test_str) * STRIDE_PERCENT), 1)
-
-    for i in range(0, len(chunk) - len(test_str), stride):
-        score = fuzz.ratio(chunk[i : i + len(test_str)], test_str)
-        if score > best_score:
-            best_score = score
-            best_match = chunk[i : i + len(test_str)]
-
-    return (best_match, best_score) if best_score >= FUZZ_THRESHOLD else (None, 0)
+    score_alignment = partial_ratio_alignment(test_str, chunk)
+    if score_alignment.score > FUZZ_THRESHOLD:
+        return (
+            chunk[score_alignment.dest_start : score_alignment.dest_end],
+            round(score_alignment.score),
+        )
+    else:
+        return (None, 0)
 
 
 def fuzzy_match_shared_memory(test_str):
@@ -123,7 +120,7 @@ def search_test_string_in_chunks(test_str, corpus_chunks):
             if chunk_best_score > best_score:
                 best_score = chunk_best_score
                 best_match = chunk_best_match
-                if chunk_best_score == 100:
+                if best_score == 100:
                     break
 
     return {"solution": test_str, "closest_solution": best_match, "score": best_score}
@@ -148,9 +145,7 @@ def search_multiple_test_strings_in_chunks(test_strings, corpus_chunks):
                 executor.submit(fuzzy_match_shared_memory, test_str)
                 for test_str in test_strings
             }
-            for future in tqdm(
-                as_completed(futures), total=len(futures), desc="Processing chunks"
-            ):
+            for future in as_completed(futures):
                 test_str, best_match, best_score = future.result()
                 if best_score > overall_results[test_str]["score"]:
                     overall_results[test_str]["score"] = best_score
@@ -163,7 +158,7 @@ def search_multiple_test_strings_in_chunks(test_strings, corpus_chunks):
     return overall_results
 
 
-def save_results(results, result_dir, result_file):
+def save_results(results, result_dir, result_file, is_single_test_string):
     """
     Save the result as a JSONL file.
     """
@@ -171,12 +166,19 @@ def save_results(results, result_dir, result_file):
     result_path = os.path.join(result_dir, result_file)
     try:
         with open(result_path, "w") as f:
-            if isinstance(results, dict):
+            if is_single_test_string:
                 json.dump(results, f)
                 f.write("\n")
             else:
-                for result in results:
-                    json.dump(result, f)
+                for test_str, result in results.items():
+                    json.dump(
+                        {
+                            "score": result["score"],
+                            "solution": test_str,
+                            "closest_solution": result["closest_solution"],
+                        },
+                        f,
+                    )
                     f.write("\n")
         logger.info(f"Results have been saved successfully to {result_path}")
     except Exception as e:
@@ -184,29 +186,66 @@ def save_results(results, result_dir, result_file):
         raise
 
 
+def update_best_results(current_results, best_results):
+    """
+    Updates the best results dictionary with the current results.
+    """
+    for test_str, result in current_results.items():
+        if result["score"] > best_results[test_str]["score"]:
+            best_results[test_str]["score"] = result["score"]
+            best_results[test_str]["closest_solution"] = result["closest_solution"]
+    return best_results
+
+
 def main(input_path, result_dir, num_corpus_files, num_chunks_to_read):
     logger.info("Reading test file...")
     test_data = load_test_data(input_path)
+    is_single_test_string = isinstance(test_data, str)
 
-    logger.info("Loading corpus data...")
+    # Initialize best_results with default values
+    if is_single_test_string:
+        best_results = {"score": 0, "closest_solution": None}
+    else:
+        best_results = {
+            test_str: {"score": 0, "closest_solution": None} for test_str in test_data
+        }
+
     corpus_files = (
         CORPUS_FILES if num_corpus_files is None else CORPUS_FILES[:num_corpus_files]
     )
-    corpus_data = load_corpus_data(corpus_files)
 
-    logger.info("Creating corpus chunks...")
-    corpus_chunks = create_corpus_chunks(corpus_data, CHUNK_SIZE, num_chunks_to_read)
+    for corpus_file in tqdm(corpus_files, desc="Processing corpus files"):
+        logger.info(f"Loading corpus data from {corpus_file}...")
+        try:
+            with open(corpus_file, "r") as f:
+                corpus_data = [json.loads(line)["text"] for line in f.readlines()]
+        except Exception as e:
+            logger.error(f"Error reading {corpus_file}: {e}")
+            continue
 
-    logger.info("Searching for solutions in corpus...")
-    if isinstance(test_data, list):
-        overall_results = search_multiple_test_strings_in_chunks(
-            test_data, corpus_chunks
+        logger.info(f"Creating corpus chunks for {corpus_file}...")
+        corpus_chunks = create_corpus_chunks(
+            corpus_data, CHUNK_SIZE, num_chunks_to_read
         )
-    else:
-        overall_results = search_test_string_in_chunks(test_data, corpus_chunks)
 
-    logger.info("Saving results...")
-    save_results(overall_results, result_dir, os.path.basename(input_path))
+        logger.info(f"Searching for solutions in {corpus_file}...")
+        if is_single_test_string:
+            current_results = search_test_string_in_chunks(test_data, corpus_chunks)
+            # Update best result for single test string
+            if current_results["score"] > best_results["score"]:
+                best_results = current_results
+                if best_results["score"] == 100:
+                    break
+        else:
+            current_results = search_multiple_test_strings_in_chunks(
+                test_data, corpus_chunks
+            )
+            # Update best results with current results
+            best_results = update_best_results(current_results, best_results)
+
+    result_file = os.path.basename(input_path)
+    logger.info("Saving best results...")
+    save_results(best_results, result_dir, result_file, is_single_test_string)
 
 
 if __name__ == "__main__":
