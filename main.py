@@ -8,15 +8,18 @@ from thefuzz import fuzz
 from tqdm import tqdm
 
 CORPUS_DIR = "Github_Split"
+CORPUS_FILE_FORMAT = "The_Pile_Github_Split_{}.jsonl"
+CORPUS_FILES_AMOUNT = 10
 CORPUS_FILES = [
-    os.path.join(CORPUS_DIR, f"The_Pile_Github_Split_{i}.jsonl") for i in range(10)
+    os.path.join(CORPUS_DIR, CORPUS_FILE_FORMAT.format(part))
+    for part in range(CORPUS_FILES_AMOUNT)
 ]
 
 CHUNK_SIZE = 2_000_000  # Chunk size by character
-PROCESS_NUM = 8
-SHM_NAME = "human_eval_pile"
-FUZZ_THRESHOLD = 50
-STRIDE_PERCENT = 0.05
+PROCESS_NUM = 8  # Number of processes to use for parallel processing
+SHM_NAME = "human_eval_pile"  # Shared memory name
+FUZZ_THRESHOLD = 50  # Fuzzy matching score threshold
+STRIDE_PERCENT = 0.05  # Stride percentage for fuzzy matching
 
 # Logging setup
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
@@ -64,11 +67,11 @@ def load_corpus_data(corpus_files):
     return corpus_data
 
 
-def create_corpus_chunks(corpus_data, chunk_size):
-    """Create fixed-size chunks from the corpus data."""
+def create_corpus_chunks(corpus_data, chunk_size, max_chunks):
+    """Create fixed-size chunks from the corpus data with an optional maximum number of chunks."""
     chunks = []
     i = 0
-    while i < len(corpus_data):
+    while i < len(corpus_data) and (max_chunks is None or len(chunks) < max_chunks):
         str_builder = StringIO()
         while i < len(corpus_data) and str_builder.tell() < chunk_size:
             str_builder.write(corpus_data[i])
@@ -77,26 +80,12 @@ def create_corpus_chunks(corpus_data, chunk_size):
     return chunks
 
 
-def main(input_path, result_dir):
-    # Validate file extensions
-    if not input_path.endswith(".jsonl"):
-        raise ValueError("Input file must have a .jsonl extension")
-    logger.info("Reading test file...")
-    test_strs = load_test_data(input_path)
-
-    logger.info("Reading training corpus...")
-    corpus_data = load_corpus_data(CORPUS_FILES[:1])
-
-    logger.info("Creating corpus chunks...")
-    corpus_chunks = create_corpus_chunks(corpus_data, CHUNK_SIZE)
-    logger.info(f"Created {len(corpus_chunks)} chunks")
-
-    # Initialize results dictionary
+def search_test_strings_in_corpus(test_strings, corpus_chunks):
     overall_results = {
-        test_str: {"score": 0, "closest_solution": None} for test_str in test_strs
+        test_str: {"score": 0, "closest_solution": None} for test_str in test_strings
     }
 
-    for chunk_str in tqdm(corpus_chunks[:1], desc="Processing chunks"):
+    for chunk_str in tqdm(corpus_chunks, desc="Processing chunks"):
         # Create shared memory and load the current chunk into it
         chunk_str_bytes = chunk_str.encode("utf-8")
         shm = shared_memory.SharedMemory(
@@ -107,21 +96,50 @@ def main(input_path, result_dir):
         # Prepare tasks for parallel processing
         task_args = [
             (test_str, SHM_NAME, FUZZ_THRESHOLD, STRIDE_PERCENT)
-            for test_str in test_strs
+            for test_str in test_strings
         ]
 
         with Pool(PROCESS_NUM) as pool:
             chunk_results = pool.map(find_best_match_for_test, task_args)
 
-        # Update overall results with the best matches from the current chunk
+        # Update overall results with the best matches from the current chunk and check for perfect matches
+        perfect_match_found = False
         for test_str, best_match, best_score in chunk_results:
             if best_score > overall_results[test_str]["score"]:
                 overall_results[test_str]["score"] = best_score
                 overall_results[test_str]["closest_solution"] = best_match
 
+            if best_score == 100:
+                perfect_match_found = True
+
         # Clean up shared memory
         shm.close()
         shm.unlink()
+
+        if perfect_match_found:
+            break
+
+    return overall_results
+
+
+def main(input_path, result_dir, num_corpus_files, num_chunks_to_read):
+    logger.info("Reading test file...")
+    test_strings = load_test_data(input_path)
+
+    logger.info("Loading corpus data...")
+    # Limit the corpus files if a limit is specified
+    corpus_files = (
+        CORPUS_FILES if num_corpus_files is None else CORPUS_FILES[:num_corpus_files]
+    )
+    corpus_data = load_corpus_data(corpus_files)
+
+    logger.info("Creating corpus chunks...")
+    # Limit the number of chunks if a limit is specified
+    corpus_chunks = create_corpus_chunks(corpus_data, CHUNK_SIZE, num_chunks_to_read)
+    logger.info(f"Created {len(corpus_chunks)} chunks")
+
+    logger.info("Searching for solutions in corpus...")
+    overall_results = search_test_strings_in_corpus(test_strings, corpus_chunks)
 
     # Save the final results to a JSONL file
     os.makedirs(result_dir, exist_ok=True)
@@ -157,7 +175,28 @@ if __name__ == "__main__":
         required=True,
         help="Dir path for putting for jsonl result file in.",
     )
+    parser.add_argument(
+        "--num_corpus_files",
+        type=int,
+        default=None,
+        help="Number of corpus files to process. Use None for no limit.",
+    )
+    parser.add_argument(
+        "--num_chunks_to_read",
+        type=int,
+        default=None,
+        help="Number of chunks to read for processing. Use None for no limit.",
+    )
 
     args = parser.parse_args()
 
-    main(args.input_path, args.result_dir)
+    if not args.input_path.endswith(".jsonl"):
+        raise ValueError("Input file must have a .jsonl extension")
+    if args.num_corpus_files > CORPUS_FILES_AMOUNT:
+        raise ValueError(
+            f"Number of corpus files must be equal or less than {CORPUS_FILES_AMOUNT}"
+        )
+
+    main(
+        args.input_path, args.result_dir, args.num_corpus_files, args.num_chunks_to_read
+    )
