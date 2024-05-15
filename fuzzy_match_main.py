@@ -5,7 +5,7 @@ import argparse
 from multiprocessing.shared_memory import SharedMemory
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from io import StringIO
-from rapidfuzz.fuzz import partial_ratio_alignment
+from rapidfuzz import fuzz
 from tqdm import tqdm
 
 CORPUS_DIR = "Github_Split"
@@ -28,11 +28,28 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
-def fuzzy_match(test_str, chunk):
+def slow_fuzzy_match(test_str, chunk):
     """
     Find the best fuzzy match for a given test string in a chunk of text.
     """
-    score_alignment = partial_ratio_alignment(test_str, chunk)
+    best_score = 0
+    best_match = None
+    stride = max(int(len(test_str) * STRIDE_PERCENT), 1)
+
+    for i in range(0, len(chunk) - len(test_str), stride):
+        score = fuzz.ratio(chunk[i : i + len(test_str)], test_str)
+        if score > best_score:
+            best_score = score
+            best_match = chunk[i : i + len(test_str)]
+
+    return (best_match, best_score) if best_score >= FUZZ_THRESHOLD else (None, 0)
+
+
+def fast_fuzzy_match(test_str, chunk):
+    """
+    Find the best fuzzy match for a given test string in a chunk of text.
+    """
+    score_alignment = fuzz.partial_ratio_alignment(test_str, chunk)
     if score_alignment.score > FUZZ_THRESHOLD:
         return (
             chunk[score_alignment.dest_start : score_alignment.dest_end],
@@ -51,7 +68,7 @@ def fuzzy_match_shared_memory(test_str):
     chunk = existing_shm.buf[:].tobytes().decode("utf-8")
     existing_shm.close()
 
-    return (test_str, *fuzzy_match(test_str, chunk))
+    return (test_str, *fast_fuzzy_match(test_str, chunk))
 
 
 def load_test_data(filename):
@@ -109,7 +126,7 @@ def search_test_string_in_chunks(test_str, corpus_chunks):
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
-            executor.submit(fuzzy_match, test_str, chunk): chunk
+            executor.submit(fast_fuzzy_match, test_str, chunk): chunk
             for chunk in corpus_chunks
         }
 

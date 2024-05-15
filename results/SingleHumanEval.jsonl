@@ -1,1 +1,1 @@
-{"solution": "    return n**2\n", "closest_solution": "    return n**2\n", "score": 100}
+{"solution": "    return n**2\n", "closest_solution": "     return n*2\n", "score": 93.75}
