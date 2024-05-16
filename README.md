@@ -8,13 +8,11 @@ This tool could be useful for verifying the novelty of exercises or searching te
 - [Project Overview](#project-overview)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-- [Directory Structure](#directory-structure)
 - [Usage Instructions](#usage-instructions)
   - [Setting Up the Corpus](#setting-up-the-corpus)
   - [Running Surface Level Similarity Score Pipeline](#running-surface-level-similarity-score-pipeline)
   - [Running Semantic Level Similarity Score Pipeline](#running-semantic-level-similarity-score-pipeline)
-- [Configuration Details](#configuration-details)
-- [Output Explanation](#output-explanation)
+- [Configurable Parameters](#configurable-parameters)
 - [Citation](#citation)
 
 ## Project Overview
@@ -45,21 +43,6 @@ The goal is to create novel Python exercises using GPT-4 and verify their novelt
 
 3. **Install Dolos:**
    Follow the installation instructions provided in the [Dolos documentation](https://dolos.ugent.be/docs/installation.html).
-
-## Directory Structure
-
-code-llm-contamination
-├── inputs
-│ └── HumanEval.jsonl
-├── results
-│ └── (results files)
-├── novelty_score
-│ ├── utility
-│ │ └── (utility files)
-│ ├── setup_corpus.py
-│ ├── fuzzy_match_main.py
-│ ├── dolos_main.py
-│ └── README.md
 
 ## Usage Instructions
 
@@ -92,9 +75,29 @@ It's possible to use other corpus in the same format.
 3. **Result format**
    The result file is jsonl format with each line correspond to other caononical_solution.
    without detailed_results it will look like that:
-   {"solution": " return n\*\*2\n", "score": 81, "closest_solution": "))\n return n\n", "chunk_results": null}
+
+   ```json
+   {
+     "solution": " return n**2\n",
+     "score": 81,
+     "closest_solution": "))\n return n\n",
+     "chunk_results": null
+   }
+   ```
+
    with detailed_results, chunk_results will be list of closest_solution in each chunk that passed FUZZ_THRESHOLD and will look like that:
-   {"solution": " return n**2\n", "score": 88, "closest_solution": " return 2**c\n", "chunk_results": [{"chunk_index": 0, "closest_solution": "))\n return n\n", "score": 81}, {"chunk_index": 2, "closest_solution": " return None\n", "score": 81}]}
+
+   ```json
+   {
+     "solution": " return n**2\n",
+     "score": 88,
+     "closest_solution": " return 2**c\n",
+     "chunk_results": [
+       { "chunk_index": 0, "closest_solution": "))\n return n\n", "score": 81 },
+       { "chunk_index": 2, "closest_solution": " return None\n", "score": 81 }
+     ]
+   }
+   ```
 
    There are more examples in results/
 
@@ -116,8 +119,11 @@ It's possible to use other corpus in the same format.
 3. **Result format**
    The result file is jsonl format with each line correspond to other caononical_test.
    The output of it will look like that:
+
+   ```json
    {"program_index": 14, "sorted_program_results": []}
    {"program_index": 15, "program_best_matches": [{"chunk_index": 4, "score": 59}, {"chunk_index": 6, "score": 10}]}
+   ```
 
    Where program_index connected to the same line in the input file.
 
