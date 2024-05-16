@@ -2,7 +2,7 @@ import os
 import json
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 from tqdm import tqdm
 
 from utils.constants import (
@@ -12,6 +12,7 @@ from utils.constants import (
     CANONICAL_SOLUTION_FILE,
 )
 from utils.logger import logger
+from .typing import DolosResult, DolosResults
 
 
 def extract_index(path: Path) -> int:
@@ -23,7 +24,7 @@ def extract_index(path: Path) -> int:
         raise
 
 
-def call_dolos(program_dir: Path) -> Dict[str, Any]:
+def call_dolos(program_dir: Path) -> DolosResult:
     """Runs Dolos on all files in the specified folder and retrieves similarity scores."""
     program_index = extract_index(program_dir)
     program_results = []
@@ -42,7 +43,9 @@ def call_dolos(program_dir: Path) -> Dict[str, Any]:
                 if "Similarity score:" in line:
                     score = float(line.split(": ")[1])
                     if score > 0:
-                        program_results.append({"chunk_index": index, "score": score})
+                        program_results.append(
+                            {"chunk_index": index, "score": round(score * 100)}
+                        )
                     break
         except Exception as e:
             logger.error(
@@ -89,7 +92,7 @@ def create_solutions_tree(test_file: Path) -> None:
                 f.write(chunk_result["closest_solution"])
 
 
-def run_dolos_analysis(folder_names: List[Path]) -> List[Any]:
+def run_dolos_analysis(folder_names: List[Path]) -> DolosResults:
     """Run Dolos analysis on multiple folders using ProcessPoolExecutor."""
     results = []
 

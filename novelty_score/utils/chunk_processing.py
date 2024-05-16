@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Any
 from io import StringIO
 from tqdm import tqdm
 from .fuzzy_matching import fast_fuzzy_match, fuzzy_match_shared_memory

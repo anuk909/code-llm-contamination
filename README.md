@@ -3,7 +3,7 @@ This pipeline was built to find similar programs within the training data of LLM
 # Results of Pipeline
 
 We store the results of our pipeline in the results folder. Due to file size, we only include the surface and sematnic similarity scores for the top 500 programs.
-The Levenshtein scores are ordered highest to lowest. Dolos scores are also ordered highest to lowest, with each program connected to their respective levenshtein scores with the key high_score_number. An example is that high_score_number": 1 corresponds to the program with the highest surface level similarity score.
+The Levenshtein scores are ordered highest to lowest. Dolos scores are also ordered highest to lowest, with each program connected to their respective levenshtein scores with the key score. An example is that "score": 100 corresponds to the program with the highest surface level similarity score.
 
 # Surface Level Similarity Score Section of Pipeline
 
