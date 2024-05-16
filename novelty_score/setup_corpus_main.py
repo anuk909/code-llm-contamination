@@ -10,6 +10,7 @@ from utils.constants import (
     PARQUET_DIR,
     PARQUET_FILE_FORMAT,
 )
+from utils.clean_up import clean_up
 
 
 def download_parquet_files():
@@ -63,6 +64,7 @@ def convert_parquet_to_jsonl():
 def main():
     download_parquet_files()
     convert_parquet_to_jsonl()
+    clean_up(PARQUET_DIR)
 
 
 if __name__ == "__main__":

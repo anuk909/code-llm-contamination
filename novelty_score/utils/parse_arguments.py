@@ -22,7 +22,7 @@ def parse_fuzzy_match_arguments() -> argparse.Namespace:
         help="Directory path for saving the jsonl result file.",
     )
     parser.add_argument(
-        "--num_corpus_files",
+        "--max_corpus_files",
         type=int,
         default=None,
         help="Number of corpus files to process. Use None for no limit.",
@@ -43,7 +43,7 @@ def parse_fuzzy_match_arguments() -> argparse.Namespace:
 
     if not args.input_path.endswith(".jsonl"):
         raise ValueError("Input file must have a .jsonl extension")
-    if args.num_corpus_files and args.num_corpus_files > CORPUS_FILES_AMOUNT:
+    if args.max_corpus_files and args.max_corpus_files > CORPUS_FILES_AMOUNT:
         raise ValueError(
             f"Number of corpus files must be equal or less than {CORPUS_FILES_AMOUNT}"
         )

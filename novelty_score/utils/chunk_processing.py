@@ -44,9 +44,10 @@ def search_test_string_in_chunks(
             match, score = future.result()
             idx = futures[future]
             if detailed_results:
-                results["chunk_results"].append(
-                    {"chunk_index": idx, "closest_solution": match, "score": score}
-                )
+                if match:
+                    results["chunk_results"].append(
+                        {"chunk_index": idx, "closest_solution": match, "score": score}
+                    )
             if score > results["score"]:
                 results.update({"closest_solution": match, "score": score})
                 if score == 100:

@@ -22,7 +22,7 @@ CORPUS_FILES: List[Path] = [
 def main(
     input_path: str,
     result_dir: str,
-    num_corpus_files: int,
+    max_corpus_files: int,
     max_chunks: int,
     detailed_results: bool,
 ) -> None:
@@ -31,7 +31,7 @@ def main(
     test_strings = [test_data] if isinstance(test_data, str) else test_data
     logger.info(f"Test data has {len(test_strings)} solutions")
 
-    corpus_files = CORPUS_FILES[:num_corpus_files] if num_corpus_files else CORPUS_FILES
+    corpus_files = CORPUS_FILES[:max_corpus_files] if max_corpus_files else CORPUS_FILES
     result_file = os.path.basename(input_path)
 
     all_results: Dict[str, Dict[str, Any]] = {
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     main(
         args.input_path,
         args.result_dir,
-        args.num_corpus_files,
+        args.max_corpus_files,
         args.max_chunks,
         args.detailed_results,
     )
