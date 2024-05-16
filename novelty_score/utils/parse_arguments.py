@@ -1,9 +1,10 @@
 import argparse
+from typing import Any
 
 from .constants import CORPUS_FILES_AMOUNT
 
 
-def parse_fuzzy_match_arguments():
+def parse_fuzzy_match_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fuzzy match test strings against corpus data."
     )
@@ -37,7 +38,7 @@ def parse_fuzzy_match_arguments():
         help="Store chunk-level results in addition to the overall best match.",
     )
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
     if not args.input_path.endswith(".jsonl"):
         raise ValueError("Input file must have a .jsonl extension")
@@ -48,7 +49,7 @@ def parse_fuzzy_match_arguments():
     return args
 
 
-def parse_dolos_arguments():
+def parse_dolos_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Dolos Analysis.")
     parser.add_argument(
         "--input_path",
@@ -62,5 +63,5 @@ def parse_dolos_arguments():
         required=True,
         help="Directory path for saving the jsonl result file.",
     )
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
     return args

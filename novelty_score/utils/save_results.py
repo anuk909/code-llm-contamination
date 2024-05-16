@@ -1,9 +1,13 @@
 import os
 import json
+from typing import List, Dict, Union, Any
 from .logger import logger
+from .typing import FuzzyMatchResults
 
 
-def save_results(results, result_dir, result_file, is_single):
+def save_fuzzy_match_results(
+    results: FuzzyMatchResults, result_dir: str, result_file: str, is_single: bool
+) -> None:
     os.makedirs(result_dir, exist_ok=True)
     result_path = os.path.join(result_dir, result_file)
     try:
@@ -17,3 +21,14 @@ def save_results(results, result_dir, result_file, is_single):
     except Exception as e:
         logger.error(f"Error saving results to {result_path}: {e}")
         raise
+
+
+def save_dolos_results(
+    results: List[Dict[str, List[Dict[str, float]]]], result_dir: str, result_file: str
+) -> None:
+    os.makedirs(result_dir, exist_ok=True)
+    with open(result_file, "w") as f:
+        for result in results:
+            json.dump(result, f)
+            f.write("\n")
+    logger.info(f"Results have been saved successfully to {result_file}")

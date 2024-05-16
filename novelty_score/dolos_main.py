@@ -9,6 +9,7 @@ from tqdm import tqdm
 from utils.parse_arguments import parse_dolos_arguments
 from utils.constants import MAX_WORKERS, ZIP_DIR, PLAIN_DIR
 from utils.logger import logger
+from utils.save_results import save_dolos_results
 
 
 def call_dolos(folder_name: str) -> Dict[str, List[Dict[str, float]]]:
@@ -117,18 +118,6 @@ def run_dolos_analysis(
     return results
 
 
-def save_results(
-    results: List[Dict[str, List[Dict[str, float]]]], result_dir: str, result_file: str
-) -> None:
-    """Save results to a JSON Lines file."""
-    os.makedirs(result_dir, exist_ok=True)
-    with open(result_file, "w") as f:
-        for result in results:
-            json.dump(result, f)
-            f.write("\n")
-    logger.info(f"Results saved to {result_file}")
-
-
 def clean_up(dir_path: Path) -> None:
     """Remove all files and directories within the given directory."""
     if dir_path.exists() and dir_path.is_dir():
@@ -149,7 +138,9 @@ def main(input_path: str, result_dir: str) -> None:
         zip_files(input_path)
         folder_names = [f.name for f in ZIP_DIR.iterdir() if f.is_dir()]
         results = run_dolos_analysis(folder_names)
-        save_results(results, result_dir, "DolosMatch" + os.path.basename(input_path))
+        save_dolos_results(
+            results, result_dir, "DolosMatch" + os.path.basename(input_path)
+        )
     finally:
         # Always clean up directories at the end
         clean_up(ZIP_DIR)

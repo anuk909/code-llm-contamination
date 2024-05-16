@@ -1,7 +1,8 @@
 import os
 import json
-from tqdm import tqdm
+from typing import List, Dict, Union
 
+from tqdm import tqdm
 
 from utils.constants import CORPUS_DIR, CORPUS_FILE_FORMAT, CORPUS_FILES_AMOUNT
 from utils.data_loading import load_test_data, load_corpus_data
@@ -14,14 +15,18 @@ from utils.save_results import save_results
 from utils.logger import logger
 from utils.parse_arguments import parse_fuzzy_match_arguments
 
-CORPUS_FILES = [
+CORPUS_FILES: List[str] = [
     CORPUS_DIR / CORPUS_FILE_FORMAT.format(part) for part in range(CORPUS_FILES_AMOUNT)
 ]
 
 
 def main(
-    input_path, result_dir, num_corpus_files, num_chunks_to_read, detailed_results
-):
+    input_path: str,
+    result_dir: str,
+    num_corpus_files: int,
+    num_chunks_to_read: int,
+    detailed_results: bool,
+) -> None:
     logger.info("Loading test file...")
     test_data = load_test_data(input_path)
     is_single = isinstance(test_data, str)
@@ -31,7 +36,9 @@ def main(
     corpus_files = CORPUS_FILES[:num_corpus_files] if num_corpus_files else CORPUS_FILES
     result_file = os.path.basename(input_path)
 
-    all_results = {
+    all_results: Dict[
+        str, Dict[str, Union[str, int, List[Dict[str, Union[str, int]]]]]
+    ] = {
         test_text: {
             "solution": test_text,
             "score": 0,
