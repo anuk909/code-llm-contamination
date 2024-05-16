@@ -1,6 +1,8 @@
 import os
 import json
 from typing import List, Dict
+from pathlib import Path
+
 from .logger import logger
 from .typing import FuzzyMatchResults
 
@@ -21,9 +23,9 @@ def save_fuzzy_match_results(
 
 
 def save_dolos_results(
-    results: List[Dict[str, List[Dict[str, float]]]], result_dir: str, result_file: str
+    results: List[Dict[str, List[Dict[str, float]]]], result_dir: Path, result_file: str
 ) -> None:
-    os.makedirs(result_dir, exist_ok=True)
+    result_dir.mkdir(exist_ok=True)
     results.sort(key=lambda x: x["program_index"])
     result_path = os.path.join(result_dir, result_file)
     with open(result_path, "w") as f:

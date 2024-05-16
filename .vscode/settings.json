@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./novelty_score",
+    ]
+}

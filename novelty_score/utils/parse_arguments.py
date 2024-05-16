@@ -1,6 +1,8 @@
 import argparse
 
 from .constants import CORPUS_FILES_AMOUNT
+from .logger import logger
+from pathlib import Path
 
 
 def parse_fuzzy_match_arguments() -> argparse.Namespace:
@@ -63,4 +65,10 @@ def parse_dolos_arguments() -> argparse.Namespace:
         help="Directory path for saving the jsonl result file.",
     )
     args: argparse.Namespace = parser.parse_args()
+
+    input_path = Path(args.input_path)
+    if not input_path.exists() or not input_path.is_file():
+        raise ValueError(
+            f"The input file {input_path} does not exist or is not a file."
+        )
     return args
