@@ -68,8 +68,8 @@ It's possible to use other corpus in the same format.
 2. **Example usage:**
 
    ```bash
-   python novelty_score/fuzzy_match_main.py --input_path inputs/HumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 1 --detailed_results
-   python novelty_score/fuzzy_match_main.py --input_path inputs/SingleHumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 40 --detailed_results
+   python novelty_score/fuzzy_match_main.py --input_path examples_inputs/HumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 1 --detailed_results
+   python novelty_score/fuzzy_match_main.py --input_path examples_inputs/SingleHumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 40 --detailed_results
    ```
 
 3. **Result format**
@@ -99,8 +99,6 @@ It's possible to use other corpus in the same format.
    }
    ```
 
-   There are more examples in results/
-
 ### Running Semantic Level Similarity Score Pipeline
 
 1. **Run the following command to perform the semantic similarity check:**
@@ -112,22 +110,18 @@ It's possible to use other corpus in the same format.
 2. **Example usage:**
 
    ```bash
-   python novelty_score/dolos_main.py --input_path inputs/FuzzyMatchHumanEval.jsonl --result_dir results
-   python novelty_score/dolos_main.py --input_path inputs/FuzzyMatchHumanEval.jsonl --result_dir results
+   python novelty_score/dolos_main.py --input_path example_inputs/FuzzyMatchHumanEval.jsonl --result_dir results
+   python novelty_score/dolos_main.py --input_path example_inputs/FuzzyMatchHumanEval.jsonl --result_dir results
    ```
 
 3. **Result format**
    The result file is jsonl format with each line correspond to other caononical_test.
-   The output of it will look like that:
+   The output of it will look like that (each program_index connected to the same line in the input file.):
 
    ```json
    {"program_index": 14, "sorted_program_results": []}
    {"program_index": 15, "program_best_matches": [{"chunk_index": 4, "score": 59}, {"chunk_index": 6, "score": 10}]}
    ```
-
-   Where program_index connected to the same line in the input file.
-
-   There are more examples in results/
 
 ### Configurable Parameters
 
