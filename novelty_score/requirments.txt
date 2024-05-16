@@ -1,0 +1,4 @@
+pyarrow
+tqdm
+rapidfuzz
+requests
