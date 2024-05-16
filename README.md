@@ -68,8 +68,8 @@ It's possible to use other corpus in the same format.
 2. **Example usage:**
 
    ```bash
-   python novelty_score/fuzzy_match_main.py --input_path examples_inputs/HumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 1 --detailed_results
-   python novelty_score/fuzzy_match_main.py --input_path examples_inputs/SingleHumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 40 --detailed_results
+   python novelty_score/fuzzy_match_main.py --input_path examples_inputs/HumanEval.jsonl --result_dir example_results --max_corpus_files 1 --max_corpus_chunks 1 --detailed_results
+   python novelty_score/fuzzy_match_main.py --input_path examples_inputs/SingleHumanEval.jsonl --result_dir example_results --max_corpus_files 1 --max_corpus_chunks 40 --detailed_results
    ```
 
 3. **Result format**
@@ -110,8 +110,8 @@ It's possible to use other corpus in the same format.
 2. **Example usage:**
 
    ```bash
-   python novelty_score/dolos_main.py --input_path example_inputs/FuzzyMatchHumanEval.jsonl --result_dir results
-   python novelty_score/dolos_main.py --input_path example_inputs/FuzzyMatchHumanEval.jsonl --result_dir results
+   python novelty_score/dolos_main.py --input_path example_results/FuzzyMatchHumanEval.jsonl --result_dir example_results
+   python novelty_score/dolos_main.py --input_path example_results/FuzzyMatchHumanEval.jsonl --result_dir example_results
    ```
 
 3. **Result format**
