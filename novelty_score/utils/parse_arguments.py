@@ -1,5 +1,4 @@
 import argparse
-from typing import Any
 
 from .constants import CORPUS_FILES_AMOUNT
 
@@ -27,7 +26,7 @@ def parse_fuzzy_match_arguments() -> argparse.Namespace:
         help="Number of corpus files to process. Use None for no limit.",
     )
     parser.add_argument(
-        "--num_chunks_to_read",
+        "--max_chunks",
         type=int,
         default=None,
         help="Number of chunks to read for processing. Use None for no limit.",

@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Union, Any
+from typing import List, Dict, Tuple, Union
 
 # Define a custom type alias for the results
 ChunkResult = Dict[str, Union[str, int]]

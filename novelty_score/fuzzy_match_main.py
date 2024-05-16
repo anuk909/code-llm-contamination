@@ -23,7 +23,7 @@ def main(
     input_path: str,
     result_dir: str,
     num_corpus_files: int,
-    num_chunks_to_read: int,
+    max_chunks: int,
     detailed_results: bool,
 ) -> None:
     logger.info("Loading test file...")
@@ -43,14 +43,14 @@ def main(
         }
         for test_str in test_strings
     }
-    start_idx = 0
+    chunk_start_index = 0
 
     for corpus_file in tqdm(corpus_files, desc="Processing corpus files"):
         logger.info(f"Loading corpus data from {corpus_file}...")
         corpus_data = load_corpus_data(corpus_file)
         logger.info(f"Creating corpus chunks for {corpus_file}...")
-        chunks = create_corpus_chunks(corpus_data, num_chunks_to_read, start_idx)
-        start_idx += len(chunks)
+        chunks = create_corpus_chunks(corpus_data, max_chunks, chunk_start_index)
+        chunk_start_index += len(chunks)
 
         if isinstance(test_data, str):
             results = search_test_string_in_chunks(test_data, chunks, detailed_results)
@@ -74,6 +74,6 @@ if __name__ == "__main__":
         args.input_path,
         args.result_dir,
         args.num_corpus_files,
-        args.num_chunks_to_read,
+        args.max_chunks,
         args.detailed_results,
     )

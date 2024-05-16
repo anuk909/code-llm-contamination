@@ -7,31 +7,40 @@ from typing import List, Dict, Any
 from tqdm import tqdm
 
 from utils.parse_arguments import parse_dolos_arguments
-from utils.constants import MAX_WORKERS, ZIP_DIR, PLAIN_DIR
+from utils.constants import MAX_WORKERS, SOLUTION_TEMP_DIR
 from utils.logger import logger
 from utils.save_results import save_dolos_results
 
+CANONICAL_SOLUTION_FILE = "canonical_solution.py"
+CHUNKS_SOLUTION_DIR_NAME = "chunks_solutions"
 
-def call_dolos(folder_name: str) -> Dict[str, Any]:
+
+def extract_index(path: Path) -> int:
+    """Extracts index from the file name."""
+    try:
+        return int(path.stem.rsplit("_", 1)[1])
+    except (IndexError, ValueError) as e:
+        logger.error(f"Failed to parse index from {path.name}: {e}")
+        return -1
+
+
+def call_dolos(program_dir: Path) -> Dict[str, Any]:
     """Runs Dolos on all files in the specified folder and retrieves similarity scores."""
-    program_index = folder_name.split("_")[1]
+    program_index = extract_index(program_dir)
     program_results = []
 
-    folder_path = ZIP_DIR / folder_name
+    canonical_solution_file = program_dir / CANONICAL_SOLUTION_FILE
+    chunks_solutions_dir = program_dir / CHUNKS_SOLUTION_DIR_NAME
 
-    for zip_file in folder_path.iterdir():
-        # Extract index from filename.
-        try:
-            index = int(zip_file.stem.split("_")[1])
-        except (IndexError, ValueError) as e:
-            logger.error(f"Failed to parse file index from {zip_file.name}: {e}")
-            continue
+    for chunk_solution_file in chunks_solutions_dir.iterdir():
+        index = extract_index(chunk_solution_file)
 
         try:
-            stream = os.popen(f"dolos run -f terminal --language python {zip_file}")
+            stream = os.popen(
+                f"dolos run -f terminal --language python {canonical_solution_file} {chunk_solution_file}"
+            )
             output = stream.read().split("\n")
 
-            # Extract similarity score
             for line in output:
                 if "Similarity score:" in line:
                     score = float(line.split(": ")[1])
@@ -39,7 +48,9 @@ def call_dolos(folder_name: str) -> Dict[str, Any]:
                         program_results.append({"chunk_index": index, "score": score})
                     break
         except Exception as e:
-            logger.error(f"Error running dolos on {zip_file}: {e}")
+            logger.error(
+                f"Error running dolos on {canonical_solution_file} and {chunk_solution_file}: {e}"
+            )
             continue
 
     sorted_program_results = sorted(
@@ -53,8 +64,8 @@ def call_dolos(folder_name: str) -> Dict[str, Any]:
     return result_dict
 
 
-def zip_files(test_file: Path) -> None:
-    """Converts test results into necessary zip files for Dolos input."""
+def create_solutions_tree(test_file: Path) -> None:
+    """Converts test results into necessary file tree for Dolos input."""
     try:
         with test_file.open("r") as f:
             results = [json.loads(line) for line in f]
@@ -65,39 +76,34 @@ def zip_files(test_file: Path) -> None:
         logger.error(f"Error parsing JSON in {test_file}: {e}")
         return
 
-    PLAIN_DIR.mkdir(exist_ok=True)
-    ZIP_DIR.mkdir(exist_ok=True)
+    SOLUTION_TEMP_DIR.mkdir(exist_ok=True)
 
-    for i, result in enumerate(tqdm(results, desc="Zipping files")):
+    for i, result in enumerate(tqdm(results, desc="Creating Solutions Tree")):
         canonical_solution = result["solution"]
 
-        plain_program_dir = PLAIN_DIR / f"Copyright_test_{i+1}"
+        plain_program_dir = SOLUTION_TEMP_DIR / f"Nobelty_test_{i+1}"
         plain_program_dir.mkdir(exist_ok=True)
 
-        zip_program_dir = ZIP_DIR / f"Problem_{i+1}_zipped"
-        zip_program_dir.mkdir(exist_ok=True)
+        canonical_solution_path = plain_program_dir / CANONICAL_SOLUTION_FILE
+        with canonical_solution_path.open("w") as f:
+            f.write(canonical_solution)
+
+        chunks_solutions_dir = plain_program_dir / CHUNKS_SOLUTION_DIR_NAME
+        chunks_solutions_dir.mkdir(exist_ok=True)
 
         for chunk_result in result["chunk_results"][:500]:
             chunk_index = chunk_result["chunk_index"]
             chunk_closest_solution = chunk_result["closest_solution"]
 
-            chunk_dir = plain_program_dir / f"chunk_{chunk_index}"
-            chunk_dir.mkdir(exist_ok=True)
-
-            chunk_closest_solution_path = chunk_dir / f"closest_solution.py"
+            chunk_closest_solution_path = (
+                chunks_solutions_dir / f"closest_solution_{chunk_index}.py"
+            )
             with chunk_closest_solution_path.open("w") as f:
                 f.write(chunk_closest_solution)
 
-            canonical_solution_path = chunk_dir / "canonical_solution.py"
-            with canonical_solution_path.open("w") as f:
-                f.write(canonical_solution)
-
-            chunk_zip_path = os.path.join(zip_program_dir, f"chunk_{chunk_index}")
-            shutil.make_archive(str(chunk_zip_path), "zip", str(chunk_dir))
-
 
 def run_dolos_analysis(
-    folder_names: List[str],
+    folder_names: List[Path],
 ) -> List[Any]:
     """Run Dolos analysis on multiple folders using ProcessPoolExecutor."""
     results = []
@@ -135,16 +141,16 @@ def main(input_path_str: str, result_dir: str) -> None:
         return
 
     try:
-        zip_files(input_path)
-        folder_names = [f.name for f in ZIP_DIR.iterdir() if f.is_dir()]
-        results = run_dolos_analysis(folder_names)
+        create_solutions_tree(input_path)
+        program_folders = [f for f in SOLUTION_TEMP_DIR.iterdir() if f.is_dir()]
+        results = run_dolos_analysis(program_folders)
         save_dolos_results(
             results, result_dir, "DolosMatch" + os.path.basename(input_path)
         )
     finally:
+        pass
         # Always clean up directories at the end
-        clean_up(ZIP_DIR)
-        clean_up(PLAIN_DIR)
+        clean_up(SOLUTION_TEMP_DIR)
 
 
 if __name__ == "__main__":

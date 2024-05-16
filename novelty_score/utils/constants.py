@@ -9,8 +9,7 @@ CORPUS_DIR = Path("Github_Split")
 CORPUS_FILE_FORMAT = "The_Pile_Github_Split_{}.jsonl"
 CORPUS_FILES_AMOUNT = 10
 
-ZIP_DIR = Path("zipped")
-PLAIN_DIR = Path("raw_files")
+SOLUTION_TEMP_DIR = Path("raw_files")
 
 # Configurable Parameters
 CHUNK_SIZE = 2_000_000
