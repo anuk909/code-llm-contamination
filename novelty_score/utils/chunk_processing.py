@@ -6,12 +6,12 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing.shared_memory import SharedMemory
 from .constants import SHM_NAME, CHUNK_SIZE, MAX_WORKERS
 from .logger import logger
-from .typing import CorpusChunkList
+from .typing import CorpusChunks
 
 
 def create_corpus_chunks(
     corpus_data: List[str], max_chunks: int, start_index: int = 0
-) -> CorpusChunkList:
+) -> CorpusChunks:
     chunks: List[Tuple[int, str]] = []
     str_builder: StringIO = StringIO()
     i: int = 0
@@ -26,7 +26,7 @@ def create_corpus_chunks(
 
 
 def search_test_string_in_chunks(
-    test_str: str, corpus_chunks: CorpusChunkList, detailed_results: bool
+    test_str: str, corpus_chunks: CorpusChunks, detailed_results: bool
 ) -> Dict[str, Any]:
     results: Dict[str, Any] = {
         "closest_solution": None,
@@ -56,7 +56,7 @@ def search_test_string_in_chunks(
 
 def search_multiple_test_strings_in_chunks(
     test_strings: List[str],
-    corpus_chunks: CorpusChunkList,
+    corpus_chunks: CorpusChunks,
     detailed_results: bool,
 ) -> Dict[str, Dict[str, Any]]:
     results: Dict[str, Dict[str, Any]] = {

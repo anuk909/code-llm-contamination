@@ -3,7 +3,7 @@ import json
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any
 from tqdm import tqdm
 
 from utils.parse_arguments import parse_dolos_arguments
@@ -12,7 +12,7 @@ from utils.logger import logger
 from utils.save_results import save_dolos_results
 
 
-def call_dolos(folder_name: str) -> Dict[str, List[Dict[str, float]]]:
+def call_dolos(folder_name: str) -> Dict[str, Any]:
     """Runs Dolos on all files in the specified folder and retrieves similarity scores."""
     program_index = folder_name.split("_")[1]
     program_results = []
@@ -98,7 +98,7 @@ def zip_files(test_file: Path) -> None:
 
 def run_dolos_analysis(
     folder_names: List[str],
-) -> List[Dict[str, List[Dict[str, float]]]]:
+) -> List[Any]:
     """Run Dolos analysis on multiple folders using ProcessPoolExecutor."""
     results = []
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -125,9 +125,9 @@ def clean_up(dir_path: Path) -> None:
     logger.info(f"Cleaned up directory: {dir_path}")
 
 
-def main(input_path: str, result_dir: str) -> None:
+def main(input_path_str: str, result_dir: str) -> None:
     """Main function to orchestrate the Dolos job."""
-    input_path = Path(input_path)
+    input_path: Path = Path(input_path_str)
     if not input_path.exists() or not input_path.is_file():
         logger.error(
             f"The input file {str(input_path)} does not exist or is not a file."

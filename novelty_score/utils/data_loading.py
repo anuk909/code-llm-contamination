@@ -1,9 +1,10 @@
 import json
 from typing import List, Union
 from .logger import logger
+from pathlib import Path
 
 
-def load_test_data(filename: str) -> Union[str, List[str]]:
+def load_test_data(filename: Path) -> Union[str, List[str]]:
     try:
         with open(filename, "r") as f:
             lines = f.readlines()
@@ -16,7 +17,7 @@ def load_test_data(filename: str) -> Union[str, List[str]]:
         raise
 
 
-def load_corpus_data(corpus_file: str) -> List[str]:
+def load_corpus_data(corpus_file: Path) -> List[str]:
     try:
         with open(corpus_file, "r") as f:
             return [json.loads(line)["text"] for line in f.readlines()]
