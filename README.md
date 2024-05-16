@@ -1,60 +1,137 @@
-This pipeline was built to find similar programs within the training data of LLMs. It works in two stages, using the RapidFuzz library and Dolos software to find programs that are similar both on a surface level and semantically.
+# Novelty Scoring Pipeline
 
-# Results of Pipeline
+This pipeline was built to find similar programs within the training data of large language models (LLMs). It works in two stages, using the RapidFuzz library and Dolos software to find programs that are similar both on a surface level and semantically.
+This tool could be useful for verifying the novelty of exercises or searching test data in training.
 
-We store the results of our pipeline in the results folder. Due to file size, we only include the surface and sematnic similarity scores for the top 500 programs.
-The Levenshtein scores are ordered highest to lowest. Dolos scores are also ordered highest to lowest, with each program connected to their respective levenshtein scores with the key score. An example is that "score": 100 corresponds to the program with the highest surface level similarity score.
+## Table of Contents
 
-# Surface Level Similarity Score Section of Pipeline
+- [Project Overview](#project-overview)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Directory Structure](#directory-structure)
+- [Usage Instructions](#usage-instructions)
+  - [Setting Up the Corpus](#setting-up-the-corpus)
+  - [Running Surface Level Similarity Score Pipeline](#running-surface-level-similarity-score-pipeline)
+  - [Running Semantic Level Similarity Score Pipeline](#running-semantic-level-similarity-score-pipeline)
+- [Configuration Details](#configuration-details)
+- [Output Explanation](#output-explanation)
+- [Citation](#citation)
 
-This feature was written by Ansong Ni. The RapidFuzz library is implemented to find programs that are similar to the gold program on a surface level.
-The code was optimized to work on both single solution and multiple solutions at once by Shmulik Cohen.
+## Project Overview
 
-### Constants
+This project extends an existing project to search for similar code in GitHub using shallow and semantic search methods with the Dolos tool.
+The goal is to create novel Python exercises using GPT-4 and verify their novelty.
 
-- CORPUS_DIR: Location of the training dataset, this is what we will be searching through.
-- TEST_FILE: File containing the canonical solutions for each question. This is what we will be searching for in the corpus.
-- CHUNK_SIZE: Used for parralization.
-- PROCESS_NUM: by default we use a pool of size 8. This can be changed depending on available hardware.
+## Prerequisites
 
-### Setup Corpus
+- Python 3.x
+- Dependencies listed in `novelty_score/requirements.txt`
+- Dolos tool (refer to [Dolos installation guide](https://dolos.ugent.be/docs/installation.html))
 
-The setup_corpus.py script allows you to download and prepare the training dataset.
+## Installation
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone git@github.com:anuk909/code-llm-contamination.git
+   cd code-llm-contamination/
+   ```
+
+2. **Install Python dependencies:**
+
+   ```bash
+   pip install -r novelty_score/requirements.txt
+   ```
+
+3. **Install Dolos:**
+   Follow the installation instructions provided in the [Dolos documentation](https://dolos.ugent.be/docs/installation.html).
+
+## Directory Structure
+
+code-llm-contamination
+├── inputs
+│ └── HumanEval.jsonl
+├── results
+│ └── (results files)
+├── novelty_score
+│ ├── utility
+│ │ └── (utility files)
+│ ├── setup_corpus.py
+│ ├── fuzzy_match_main.py
+│ ├── dolos_main.py
+│ └── README.md
+
+## Usage Instructions
+
+### Setting Up the Corpus
+
+The `setup_corpus.py` script allows you to download and prepare the github python training dataset of the PILE.
 It downloads parquet files from a specified URL and converts them to JSONL format for further processing.
+It's possible to use other corpus in the same format.
+
+1. **Run the setup script:**
+   ```bash
+   python novelty_score/setup_corpus_main.py
+   ```
 
 ### Running Surface Level Similarity Score Pipeline
 
-```
-pip install -r requirments.txt
-python setup_corpus.py
-python fuzzy_match_main.py --input_path <input_path> --result_dir <result_dir> --num_corpus_files <num_corpus_files> --num_chunks_to_read <num_chunks_to_read>
-```
+1. **Run the following commands to perform the surface level similarity check:**
 
-### Example usage
+   ```bash
+   python novelty_score/fuzzy_match_main.py --input_path <input_path> --result_dir <result_dir> --max_corpus_files <max_corpus_files> --max_corpus_chunks <max_corpus_chunks> --detailed_results
+   ```
 
-```
-python fuzzy_match_main.py --input_path inputs/HumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 1
-python fuzzy_match_main.py --input_path inputs/SingleHumanEval.jsonl --result_dir results --num_corpus_files 1 --num_chunks_to_read 40
-```
+2. **Example usage:**
 
-# Semantic Level Similarity Score Section of Pipeline
+   ```bash
+   python novelty_score/fuzzy_match_main.py --input_path inputs/HumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 1 --detailed_results
+   python novelty_score/fuzzy_match_main.py --input_path inputs/SingleHumanEval.jsonl --result_dir results --max_corpus_files 1 --max_corpus_chunks 40 --detailed_results
+   ```
 
-The Dolos software requires each program to be zipped and stored seperatly within one folder. Once the programs are stored in the proper format, we can call the Dolos software on each folder. The zip_files() function works to create the folders properly formatted. After that the call_dolos() function works to call dolos on each of those folders.
-
-### Constants
-
-- ZIP_DIR: Folder to store zipped files.
-- PLAIN_DIR: Location where programs are stored as plain text to be zipped.
-- TEST_FILE: File containing the canonical solutions for each question. This is what we will be comparing each of the found programs to.
-- PROCESS_NUM: by default we use a pool of size 16. This can be changed depending on available hardware.
+3. **Result format**
+   The result file is jsonl format with each line correspond to other caononical_test.
+   without detailed_results it will look like that:
+   {"solution": " return n\*\*2\n", "score": 81, "closest_solution": "))\n return n\n", "chunk_results": null}
+   with detailed_results, chunk_results will be list of closest_solution in each chunk that passed FUZZ_THRESHOLD and will look like that:
+   {"solution": " return n**2\n", "score": 88, "closest_solution": " return 2**c\n", "chunk_results": [{"chunk_index": 0, "closest_solution": "))\n return n\n", "score": 81}, {"chunk_index": 2, "closest_solution": " return None\n", "score": 81}]}
 
 ### Running Semantic Level Similarity Score Pipeline
 
-```
-python dolos_main.py
-```
+1. **Run the following command to perform the semantic similarity check:**
+
+   ```bash
+   python novelty_score/dolos_main.py --input_path <input_path> --result_dir <result_dir>
+   ```
+
+2. **Example usage:**
+
+   ```bash
+   python novelty_score/dolos_main.py --input_path inputs/FuzzyMatchHumanEval.jsonl --result_dir results
+   python novelty_score/dolos_main.py --input_path inputs/FuzzyMatchHumanEval.jsonl --result_dir results
+   ```
+
+3. **Result format**
+   The result file is jsonl format with each line correspond to other caononical_test.
+   The output of it will look like that:
+   {"program_index": 14, "sorted_program_results": []}
+   {"program_index": 15, "program_best_matches": [{"chunk_index": 4, "score": 59}, {"chunk_index": 6, "score": 10}]}
+
+   Where program_index connected to the same line in the input file.
+
+### Configurable Parameters
+
+In novelty_score/utils/constants.py there are some configurable parameters that
+it's possible to change according to yout data.
+
+- 'CHUNK_SIZE' = The maximal string length of each chunk from corpus data
+- 'MAX_WORKERS' = Number of processes to use (default: 8).
+- 'FUZZ_THRESHOLD' = The minimal relevant fuzz score to save.
+- 'STRIDE_PERCENT' = The relative fuzz search jump, relevant only in slow_fuzzy_match
 
 # Citation
+
+#TODO - maybe add shmulik cohen's team
 
 ```
 @misc{placeholder,
