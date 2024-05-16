@@ -90,11 +90,13 @@ It's possible to use other corpus in the same format.
    ```
 
 3. **Result format**
-   The result file is jsonl format with each line correspond to other caononical_test.
+   The result file is jsonl format with each line correspond to other caononical_solution.
    without detailed_results it will look like that:
    {"solution": " return n\*\*2\n", "score": 81, "closest_solution": "))\n return n\n", "chunk_results": null}
    with detailed_results, chunk_results will be list of closest_solution in each chunk that passed FUZZ_THRESHOLD and will look like that:
    {"solution": " return n**2\n", "score": 88, "closest_solution": " return 2**c\n", "chunk_results": [{"chunk_index": 0, "closest_solution": "))\n return n\n", "score": 81}, {"chunk_index": 2, "closest_solution": " return None\n", "score": 81}]}
+
+   There are more examples in results/
 
 ### Running Semantic Level Similarity Score Pipeline
 
@@ -119,10 +121,12 @@ It's possible to use other corpus in the same format.
 
    Where program_index connected to the same line in the input file.
 
+   There are more examples in results/
+
 ### Configurable Parameters
 
 In novelty_score/utils/constants.py there are some configurable parameters that
-it's possible to change according to yout data.
+it's possible to change according to your data.
 
 - 'CHUNK_SIZE' = The maximal string length of each chunk from corpus data
 - 'MAX_WORKERS' = Number of processes to use (default: 8).
