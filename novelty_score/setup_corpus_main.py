@@ -2,13 +2,14 @@ import os
 import requests
 from tqdm import tqdm
 import pandas as pd
-
-BASE_URL = "https://huggingface.co/datasets/andstor/the_pile_github/resolve/main/data/train/Python/{}"
-PARQUET_DIR = "parquet_files"
-PARQUET_FILE_FORMAT = "part.{}.parquet"
-JSONL_DIR = "Github_Split"
-JSONL_FILE_FORMAT = "The_Pile_Github_Split_{}.jsonl"
-NUM_PARTS = 10
+from utils.constants import (
+    CORPUS_FILES_AMOUNT,
+    CORPUS_DIR,
+    CORPUS_FILE_FORMAT,
+    BASE_URL,
+    PARQUET_DIR,
+    PARQUET_FILE_FORMAT,
+)
 
 
 def download_parquet_files():
@@ -17,11 +18,13 @@ def download_parquet_files():
     """
     os.makedirs(PARQUET_DIR, exist_ok=True)
 
-    for part in tqdm(range(NUM_PARTS), desc="Downloading parquet files", unit="file"):
+    for part in tqdm(
+        range(CORPUS_FILES_AMOUNT), desc="Downloading parquet files", unit="file"
+    ):
         file_name = PARQUET_FILE_FORMAT.format(part)
-        file_path = os.path.join(PARQUET_DIR, file_name)
+        file_path = PARQUET_DIR / PARQUET_FILE_FORMAT.format(part)
 
-        if os.path.exists(file_path):
+        if file_path.exists():
             continue
 
         url = BASE_URL.format(file_name)
@@ -34,17 +37,19 @@ def download_parquet_files():
 
 def convert_parquet_to_jsonl():
     """
-    Convert parquet files to jsonl files and save them to the 'GithubSplit' directory.
+    Convert parquet files to jsonl files and save them to the Corpus directory.
     """
-    os.makedirs(JSONL_DIR, exist_ok=True)
+    os.makedirs(CORPUS_DIR, exist_ok=True)
 
     for part in tqdm(
-        range(NUM_PARTS), desc="Converting parquet files to jsonl", unit="file"
+        range(CORPUS_FILES_AMOUNT),
+        desc="Converting parquet files to jsonl",
+        unit="file",
     ):
-        parquest_file_path = os.path.join(PARQUET_DIR, PARQUET_FILE_FORMAT.format(part))
-        jsonl_file_path = os.path.join(JSONL_DIR, JSONL_FILE_FORMAT.format(part))
+        parquest_file_path = PARQUET_DIR / PARQUET_FILE_FORMAT.format(part)
+        jsonl_file_path = CORPUS_DIR / CORPUS_FILE_FORMAT.format(part)
 
-        if os.path.exists(jsonl_file_path):
+        if jsonl_file_path.exists():
             continue
 
         df = pd.read_parquet(parquest_file_path)

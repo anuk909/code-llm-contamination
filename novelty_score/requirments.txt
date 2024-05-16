@@ -1,4 +1,4 @@
 pandas
 tqdm
 fastparquet
-the_fuzz
+rapidfuzz
