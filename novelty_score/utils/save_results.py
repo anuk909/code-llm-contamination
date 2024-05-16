@@ -24,6 +24,7 @@ def save_dolos_results(
     results: List[Dict[str, List[Dict[str, float]]]], result_dir: str, result_file: str
 ) -> None:
     os.makedirs(result_dir, exist_ok=True)
+    results.sort(key=lambda x: x["program_index"])
     result_path = os.path.join(result_dir, result_file)
     with open(result_path, "w") as f:
         for result in results:
