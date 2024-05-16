@@ -25,13 +25,13 @@ def parse_fuzzy_match_arguments() -> argparse.Namespace:
         "--max_corpus_files",
         type=int,
         default=None,
-        help="Number of corpus files to process. Use None for no limit.",
+        help="Maximal number of corpus files to process. Use None for no limit.",
     )
     parser.add_argument(
-        "--max_chunks",
+        "--max_corpus_chunks",
         type=int,
         default=None,
-        help="Number of chunks to read for processing. Use None for no limit.",
+        help="Maximal of curpus chunks to read for processing. Use None for no limit.",
     )
     parser.add_argument(
         "--detailed_results",

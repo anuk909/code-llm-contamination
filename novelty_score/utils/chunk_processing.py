@@ -10,17 +10,20 @@ from .typing import CorpusChunks
 
 
 def create_corpus_chunks(
-    corpus_data: List[str], max_chunks: int, start_index: int = 0
+    corpus_data: List[str], max_corpus_chunks: int, start_index: int = 0
 ) -> CorpusChunks:
-    chunks: List[Tuple[int, str]] = []
-    str_builder: StringIO = StringIO()
+    chunks: CorpusChunks = []
     i: int = 0
 
-    while i < len(corpus_data) and (len(chunks) < max_chunks if max_chunks else True):
-        while i < len(corpus_data) and str_builder.tell() < CHUNK_SIZE:
-            str_builder.write(corpus_data[i])
-            i += 1
-        chunks.append((len(chunks) + start_index, str_builder.getvalue()))
+    while i < len(corpus_data) and (
+        len(chunks) < max_corpus_chunks if max_corpus_chunks else True
+    ):
+        with StringIO() as str_builder:
+            while i < len(corpus_data) and str_builder.tell() < CHUNK_SIZE:
+                str_builder.write(corpus_data[i])
+                i += 1
+            chunks.append((len(chunks) + start_index, str_builder.getvalue()))
+
     logger.info(f"Created {len(chunks)} corpus chunks")
     return chunks
 

@@ -23,7 +23,7 @@ def main(
     input_path: str,
     result_dir: str,
     max_corpus_files: int,
-    max_chunks: int,
+    max_corpus_chunks: int,
     detailed_results: bool,
 ) -> None:
     logger.info("Loading test file...")
@@ -49,7 +49,7 @@ def main(
         logger.info(f"Loading corpus data from {corpus_file}...")
         corpus_data = load_corpus_data(corpus_file)
         logger.info(f"Creating corpus chunks for {corpus_file}...")
-        chunks = create_corpus_chunks(corpus_data, max_chunks, chunk_start_index)
+        chunks = create_corpus_chunks(corpus_data, max_corpus_chunks, chunk_start_index)
         chunk_start_index += len(chunks)
 
         if isinstance(test_data, str):
@@ -74,6 +74,6 @@ if __name__ == "__main__":
         args.input_path,
         args.result_dir,
         args.max_corpus_files,
-        args.max_chunks,
+        args.max_corpus_chunks,
         args.detailed_results,
     )
