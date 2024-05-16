@@ -1,7 +1,8 @@
 import os
 import requests
 from tqdm import tqdm
-import pandas as pd
+import pyarrow.parquet as pq
+import json
 from utils.constants import (
     CORPUS_FILES_AMOUNT,
     CORPUS_DIR,
@@ -23,16 +24,17 @@ def download_parquet_files():
         range(CORPUS_FILES_AMOUNT), desc="Downloading parquet files", unit="file"
     ):
         file_name = PARQUET_FILE_FORMAT.format(part)
-        file_path = PARQUET_DIR / PARQUET_FILE_FORMAT.format(part)
+        parquet_file_path = PARQUET_DIR / PARQUET_FILE_FORMAT.format(part)
+        jsonl_file_path = CORPUS_DIR / CORPUS_FILE_FORMAT.format(part)
 
-        if file_path.exists():
+        if parquet_file_path.exists() or jsonl_file_path.exists():
             continue
 
         url = BASE_URL.format(file_name)
         response = requests.get(url)
         response.raise_for_status()  # Raise an exception for non-2xx status codes
 
-        with open(file_path, "wb") as file:
+        with open(parquet_file_path, "wb") as file:
             file.write(response.content)
 
 
@@ -47,18 +49,19 @@ def convert_parquet_to_jsonl():
         desc="Converting parquet files to jsonl",
         unit="file",
     ):
-        parquest_file_path = PARQUET_DIR / PARQUET_FILE_FORMAT.format(part)
+        parquet_file_path = PARQUET_DIR / PARQUET_FILE_FORMAT.format(part)
         jsonl_file_path = CORPUS_DIR / CORPUS_FILE_FORMAT.format(part)
 
         if jsonl_file_path.exists():
             continue
 
-        df = pd.read_parquet(parquest_file_path)
-        df.to_json(
-            jsonl_file_path,
-            orient="records",
-            lines=True,
-        )
+        table = pq.read_table(parquet_file_path)
+        records = table.to_pylist()
+
+        with open(jsonl_file_path, "w") as f:
+            for record in records:
+                json_record = json.dumps(record)
+                f.write(json_record + "\n")
 
 
 def main():

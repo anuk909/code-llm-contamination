@@ -1,4 +1,4 @@
-pandas
+pyarrow
 tqdm
-fastparquet
 rapidfuzz
+requests
